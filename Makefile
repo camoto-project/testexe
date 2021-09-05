@@ -2,8 +2,11 @@
 
 EMU = emu2/emu2
 CC = $(EMU) tc/tcc.exe
-CFLAGS =
-OBJECTS = src/loadmod.obj
+CFLAGS = -I\\src
+OBJECTS =
+OBJECTS += src/debug.obj
+OBJECTS += src/loadmod.obj
+OBJECTS += src/zip.obj
 TARGET = src/loadmod.exe
 
 # What to do when the user runs 'make' with no arguments.
@@ -35,7 +38,8 @@ src/%.obj: src/%.c $(EMU)
 
 # How to build the final .exe from all the object files.
 $(TARGET): $(OBJECTS)
-	$(LD) $(LDFLAGS) $(subst /,\\,$<) , $(subst /,\\,$@) , , $(LIBS)
+	$(LD) $(LDFLAGS) $(subst /,\\,$^) , $(subst /,\\,$@) , , $(LIBS)
+	echo -n "Hello!  This file is in .zip format, use your favourite unzipper to extract :)" | dd conv=notrunc of=$@ bs=1 seek=64
 
 # This way is less UNIXy but it figures out what libraries we need
 # automatically.
