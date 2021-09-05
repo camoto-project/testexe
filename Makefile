@@ -2,24 +2,38 @@
 
 EMU = emu2/emu2
 CC = $(EMU) tc/tcc.exe
-CFLAGS = -I\\src
-OBJECTS =
-OBJECTS += src/debug.obj
-OBJECTS += src/loadmod.obj
-OBJECTS += src/zip.obj
-TARGET = src/loadmod.exe
+CFLAGS = -I\\build
+TARGET = build/loadmod.exe
+FILES =
+FILES += debug.c
+FILES += loadmod.c
+FILES += zip.c
+
+HEADERS =
+HEADERS += debug.h
+HEADERS += types.h
+HEADERS += zip.h
+
+OBJECTS = $(patsubst %.c,build/%.obj,$(FILES))
+FILES_CRLF = $(patsubst %.c,build/%.c,$(FILES))
+HEADERS_CRLF = $(patsubst %.h,build/%.h,$(HEADERS))
 
 # What to do when the user runs 'make' with no arguments.
 all: $(TARGET)
 
 # Remove compiler artifacts.
 clean:
-	rm -f $(OBJECTS) $(TARGET)
+	rm -f $(OBJECTS) $(TARGET) $(FILES_CRLF) $(HEADERS_CRLF)
 
 # Remove everything including the compiled emulator, returning the tree to
 # pristine state.
 distclean: clean
 	rm -rf emu2
+
+# List dependencies
+build/debug.c: build/debug.h
+build/loadmod.c: build/debug.h build/types.h build/zip.h
+build/zip.c: build/types.h build/zip.h
 
 # This way is more UNIX-style but it means we have to figure out what libraries
 # we need ourselves.
@@ -33,8 +47,14 @@ LIBS += C:\\TC\\LIB\\cs.lib
 
 # How to compile each source file into an object.  $(EMU) ensures the DOS
 # emulator is available first.
-src/%.obj: src/%.c $(EMU)
+build/%.obj: build/%.c $(EMU)
 	$(CC) $(CFLAGS) -c -o$(subst /,\\,$@) $(subst /,\\,$<)
+
+# Convert source files to DOS CRLF required by Turbo C
+build/%.c: src/%.c
+	unix2dos -n $< $@
+build/%.h: src/%.h
+	unix2dos -n $< $@
 
 # How to build the final .exe from all the object files.
 $(TARGET): $(OBJECTS)

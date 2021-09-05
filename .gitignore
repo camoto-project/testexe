@@ -1,3 +1,2 @@
 emu2/
-src/*.obj
-src/*.exe
+build/
