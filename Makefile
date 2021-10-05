@@ -1,78 +1,65 @@
-.PHONY: all clean
+.PHONY: all clean distclean
+
+# This rule has to be first so that a plain `make` calls it, but we can't
+# declare it until we've specified the TARGETS_X rules.
+all:
 
 EMU = emu2/emu2
-CC = $(EMU) tc/tcc.exe
-CFLAGS = -I\\build
-TARGET = build/loadmod.exe
-FILES =
-FILES += debug.c
-FILES += loadmod.c
-FILES += zip.c
+# Have to set the working directory so tcc.exe can find tlink.exe.
+CC = EMU2_CWD="C:\\TC" $(EMU) tc/tcc.exe
+CFLAGS = -I\\build -f- -k
 
-HEADERS =
-HEADERS += debug.h
-HEADERS += types.h
-HEADERS += zip.h
+# These are the PKLite versions to compress with.
+VERSIONS = 100 103 105 112 112r 113 113r 114 115 115r 150 201
 
-OBJECTS = $(patsubst %.c,build/%.obj,$(FILES))
-FILES_CRLF = $(patsubst %.c,build/%.c,$(FILES))
-HEADERS_CRLF = $(patsubst %.h,build/%.h,$(HEADERS))
+TARGETS_T = $(addsuffix .exe,$(addprefix compress/t,$(VERSIONS)))
+TARGETS_H = $(addsuffix .exe,$(addprefix compress/h,$(VERSIONS)))
 
-# What to do when the user runs 'make' with no arguments.
-all: $(TARGET)
-
-# Remove compiler artifacts.
-clean:
-	rm -f $(OBJECTS) $(TARGET) $(FILES_CRLF) $(HEADERS_CRLF)
+# Don't delete these intermediate files unless the build fails.
+build/test-h.exe:
+build/test-t.exe:
 
 # Remove everything including the compiled emulator, returning the tree to
 # pristine state.
 distclean: clean
 	rm -rf emu2
 
-# List dependencies
-build/debug.c: build/debug.h
-build/loadmod.c: build/debug.h build/types.h build/zip.h
-build/zip.c: build/types.h build/zip.h
-
-# This way is more UNIX-style but it means we have to figure out what libraries
-# we need ourselves.
-
-LD = $(EMU) tc/tlink.exe
-LDFLAGS = /c/x C:\\TC\\LIB\\c0s.obj
-LIBS =
-#LIBS += C:\\TC\\LIB\\emu.lib
-#LIBS += C:\\TC\\LIB\\maths.lib
-LIBS += C:\\TC\\LIB\\cs.lib
-
-# How to compile each source file into an object.  $(EMU) ensures the DOS
-# emulator is available first.
-build/%.obj: build/%.c $(EMU)
-	$(CC) $(CFLAGS) -c -o$(subst /,\\,$@) $(subst /,\\,$<)
-
-# Convert source files to DOS CRLF required by Turbo C
-build/%.c: src/%.c
-	unix2dos -n $< $@
-build/%.h: src/%.h
-	unix2dos -n $< $@
-
-# How to build the final .exe from all the object files.
-$(TARGET): $(OBJECTS)
-	$(LD) $(LDFLAGS) $(subst /,\\,$^) , $(subst /,\\,$@) , , $(LIBS)
-	echo -n "Hello!  This file is in .zip format, use your favourite unzipper to extract :)" | dd conv=notrunc of=$@ bs=1 seek=64
-
-# This way is less UNIXy but it figures out what libraries we need
-# automatically.
-
-# Have to set the working directory so tcc.exe can find tlink.exe.
-#EMU=EMU2_CWD="C:\\TC" emu2/emu2
-
 # Need the emulator available to compile anything.
-#src/loadmod.c: emu2/emu2
+src/test-s.c: emu2/emu2
 
-#src/loadmod.exe: src/loadmod.c
-#	$(CC) $(CFLAGS) -e\\$(subst /,\\,$@) \\$(subst /,\\,$^)
-#	@rm -f 'turboc.$$ln'
+# Don't seem to be able to run multiple emu2 instances with Turbo C at the same
+# time, although PKLite is fine.
+.NOTPARALLEL: build/test-%.exe
+
+# Compile the test .exe using whatever memory model is in the filename.
+build/test-%.exe: src/test-%.c
+	$(CC) $(CFLAGS) -m$* -e\\$(subst /,\\,$@) \\$(subst /,\\,$^)
+	@rm -f 'turboc.$$ln' tc/$(@F:%.exe=%.obj)
+	@if [ ! -f "$@" ]; then echo Failed to create "$@"; false; fi
+
+# Compress each file with large mode off.
+compress/t%.exe: build/test-t.exe
+	cp "$<" "$@"
+	@echo -en "\033[1;34m"
+	if [ "$(findstring r,$*)" == "r" ]; then OPTS="-e"; fi && \
+	EMU2_DRIVE_C=pklite/ EMU2_DRIVE_D=compress/ $(EMU) pklite/pkl$*.exe $$OPTS d:\\$(@F)
+	@echo -en "\033[0m"
+
+# Compress each file with large mode on.  It would be nice to avoid
+# duplicating this rule, but there's no neat way to do it.
+compress/h%.exe: build/test-h.exe
+	cp "$<" "$@"
+	@echo -en "\033[1;34m"
+	if [ "$(findstring r,$*)" == "r" ]; then OPTS="-e"; fi && \
+	EMU2_DRIVE_C=pklite/ EMU2_DRIVE_D=compress/ $(EMU) pklite/pkl$*.exe $$OPTS d:\\$(@F)
+	@echo -en "\033[0m"
+
+# What to do when the user runs 'make' with no arguments.
+all: $(TARGETS_T) $(TARGETS_H)
+
+# Remove compiler artifacts.
+clean:
+	rm -f $(TARGETS_T) $(TARGETS_H) build/*.exe
 
 # Handle the DOS emulator.
 
