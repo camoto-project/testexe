@@ -86,7 +86,9 @@ int parseInt(const char *s)
 		if ((*s >= '0') && (*s <= '9')) {
 			out += *s - '0';
 		} else if ((*s >= 'A') && (*s <= 'F')) {
-			out += *s - 'A';
+			out += 10 + *s - 'A';
+		} else if ((*s >= 'a') && (*s <= 'f')) {
+			out += 10 + *s - 'a';
 		} else {
 			return -1;
 		}
@@ -148,6 +150,14 @@ int main(int argc, const char *argv[])
 	hdr.offRelocTable = lenOutputHeader;
 	hdr.pgLenHeader = (hdr.offRelocTable + lenReloc + 0xF) >> 4;
 	lenRelocAdd = (hdr.pgLenHeader << 4) - (hdr.offRelocTable + lenReloc);
+
+	/* Update the total .exe size */
+	reloc = (hdr.blockCount << 9) + hdr.lenLastBlock;
+	if (hdr.lenLastBlock) reloc -= 512;
+	reloc = reloc - hdrExtra - lenRelocDrop + lenRelocAdd
+		+ (lenOutputHeader - sizeof(EXE_HEADER));
+	hdr.lenLastBlock = reloc & 0x1FF;
+	hdr.blockCount = (reloc + 0x1FF) >> 9;
 
 	/* Write updated EXE header */
 	write(STDOUT, &hdr, sizeof(EXE_HEADER));
