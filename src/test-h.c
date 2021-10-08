@@ -9,6 +9,6 @@
 
 int main(void)
 {
-	write(0, D3, sizeof(D3));
+	write(1, D3, sizeof(D3));
 	return 0;
 }

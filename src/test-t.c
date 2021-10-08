@@ -2,6 +2,6 @@
 
 int main(void)
 {
-	write(0, "This is a test.\n", 16);
+	write(1, "This is a test.\n", 16);
 	return 0;
-}
+}
