@@ -14,6 +14,16 @@ folder, and the compressed files are in the `compress/` folder.
 * `compress/t*.exe` - PKLite compressed `build/test-t.exe` ("large" flag off)
 * `compress/h*.exe` - PKLite compressed `build/test-h.exe` ("large" flag on)
 * `compress/[th]*r.exe` - PKLite 'extra' flag used (to prevent decompression)
+* `compress/[th]*r.unc` - Decompressed versions with normalised relocation
+  tables.  This is because PKLite with the 'extra' flag rewrites the relocation
+  table to compress more efficiently, so upon decompression it cannot be
+  restored back to the original values.  This means comparing the decompressed
+  data to `build/test-[th].exe` will fail due to the different relocation
+  table.  Instead, the original uncompressed .exe has its relocation table
+  rewritten in the same way PKLite does, and this is stored as the `.unc` file.
+  This means for files that have an `.unc` present, it should be used instead
+  of `build/test-[th].exe` when comparing the decompressor output to the
+  original `.exe`.
 
 This repository includes a partial copy for Borland Turbo C v2.01, which is
 copyright 1987-1988 Borland International.  This compiler has been graciously
